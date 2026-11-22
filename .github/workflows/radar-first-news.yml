@@ -1,0 +1,95 @@
+name: AI Radar - First News
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  news:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Install Horizon
+        run: uv sync
+
+      - name: Prepare preview
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          cfg = json.loads(
+              Path("data/config.github.json").read_text()
+          )
+
+          names = {"Simon Willison", "Hugging Face"}
+          cfg["sources"]["rss"] = [
+              s for s in cfg["sources"]["rss"]
+              if s["name"] in names
+          ]
+          cfg["sources"]["github"] = []
+
+          cfg["ai"]["languages"] = ["ru"]
+          cfg["collection"]["time_window_hours"] = 72
+          cfg["digest"]["max_items"] = 4
+
+          for p in ["ai-tech-radar", "ai-lifehacks"]:
+              cfg["processing"]["profile_settings"][p][
+                  "threshold"
+              ] = 6.0
+
+              path = Path("profiles") / p / "profile.json"
+              profile = json.loads(path.read_text())
+              profile["enrichment"]["blocks"] = [
+                  b for b in profile["enrichment"]["blocks"]
+                  if b["id"] == "summary"
+              ]
+              path.write_text(json.dumps(profile))
+
+          target = Path(os.environ["RUNNER_TEMP"])
+          (target / "radar-preview.json").write_text(
+              json.dumps(cfg, ensure_ascii=False)
+          )
+          PY
+
+      - name: Generate first news
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+        run: |
+          test -n "$GOOGLE_API_KEY"
+          uv run horizon \
+            --data-dir "$RUNNER_TEMP/radar-state" \
+            --config "$RUNNER_TEMP/radar-preview.json" \
+            --hours 72 \
+            --log-level INFO
+
+      - name: Show news in log
+        run: |
+          DIR="$RUNNER_TEMP/radar-state/summaries"
+          FILE=$(find "$DIR" -type f -name '*.md' | sort | tail -1)
+          if [ -z "$FILE" ]; then
+            echo "No report generated"
+            exit 1
+          fi
+          echo "===== AI RADAR NEWS ====="
+          sed -n '1,150p' "$FILE"
+
+      - name: Save news report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AI-RADAR-FIRST-NEWS
+          path: ${{ runner.temp }}/radar-state/summaries/
+          if-no-files-found: warn
