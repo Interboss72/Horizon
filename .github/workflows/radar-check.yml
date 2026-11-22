@@ -1,0 +1,67 @@
+name: AI Tech Radar Config Check
+
+on:
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Validate Horizon configuration
+        run: |
+          uv run python - <<'PY'
+          import json
+          import inspect
+          from pathlib import Path
+          from pydantic import BaseModel
+          import src.models as models
+
+          cfg = json.loads(
+              Path("data/config.github.json").read_text()
+          )
+
+          candidates = []
+          for name, cls in vars(models).items():
+              if (inspect.isclass(cls)
+                  and issubclass(cls, BaseModel)
+                  and cls.__module__ == models.__name__
+                  and {"ai", "sources", "processing"}
+                      <= set(cls.model_fields)):
+                  candidates.append(cls)
+
+          if not candidates:
+              raise RuntimeError("Config model not found")
+
+          root = max(
+              candidates,
+              key=lambda cls: len(cls.model_fields)
+          )
+          root.model_validate(cfg)
+
+          for name in ["ai-tech-radar", "ai-lifehacks"]:
+              folder = Path("profiles") / name
+              profile = json.loads(
+                  (folder / "profile.json").read_text()
+              )
+              assert profile["id"] == name
+              for file in ["match.md", "analysis.md",
+                           "enrichment.md"]:
+                  assert (folder / file).is_file()
+
+          assert cfg["ai"]["languages"] == ["ru"]
+          print("CONFIG VALIDATED")
+          print("PROFILES VALIDATED")
+          print("RUSSIAN LANGUAGE ENABLED")
+          print("AI TECH RADAR CHECK PASSED")
+          PY
