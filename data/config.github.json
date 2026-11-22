@@ -21,7 +21,7 @@
         "topic_dedup": true
       },
       "ai-lifehacks": {
-        "threshold": 8.0,
+        "threshold": 9.0,
         "topic_dedup": true
       }
     }
@@ -64,7 +64,10 @@
         "url": "https://simonwillison.net/atom/everything/",
         "enabled": true,
         "category": "ai-lifehacks",
-        "profile": "ai-lifehacks"
+        "profile": [
+          "ai-tech-radar",
+          "ai-lifehacks"
+        ]
       },
       {
         "name": "GitHub Security",

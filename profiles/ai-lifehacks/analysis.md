@@ -37,3 +37,15 @@ explicitly mark them as unknown.
 
 Prefer one excellent advanced technique over
 several obvious or poorly supported suggestions.
+
+
+## Strict Scoring Gates
+
+Unrelated to practical AI: score 0-2.
+Generic or obvious advice: maximum score 4.
+No reproducible steps: maximum score 4.
+No reliable supporting source: maximum score 4.
+Verified, novel, actionable technique: score 8-10.
+
+Never award a high score for popularity alone.
+Never invent verification or practical test results.

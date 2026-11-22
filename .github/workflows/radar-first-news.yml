@@ -48,7 +48,7 @@ jobs:
           for p in ["ai-tech-radar", "ai-lifehacks"]:
               cfg["processing"]["profile_settings"][p][
                   "threshold"
-              ] = 6.0
+              ] = 9.0 if p == "ai-lifehacks" else 8.0
 
               path = Path("profiles") / p / "profile.json"
               profile = json.loads(path.read_text())
